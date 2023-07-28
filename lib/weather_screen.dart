@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:weather_app/additional_information_item.dart';
 import 'package:weather_app/hourly_forecast_item.dart';
 import 'package:http/http.dart' as http;
@@ -14,9 +15,10 @@ class WeatherScreen extends StatefulWidget {
 }
 
 class _WeatherScreenState extends State<WeatherScreen> {
+  late Future<Map<String, dynamic>> weather;
   Future<Map<String, dynamic>> getCurrentWeather() async {
     try {
-      String cityName = 'London';
+      String cityName = 'Bishkek';
       final res = await http.get(
         Uri.parse(
           'https://api.openweathermap.org/data/2.5/forecast?q=$cityName&APPID=$openWeatherAPIKey',
@@ -36,6 +38,12 @@ class _WeatherScreenState extends State<WeatherScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    weather = getCurrentWeather();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -48,13 +56,17 @@ class _WeatherScreenState extends State<WeatherScreen> {
         centerTitle: true,
         actions: [
           IconButton(
-            onPressed: () {},
+            onPressed: () {
+              setState(() {
+                weather = getCurrentWeather();
+              });
+            },
             icon: const Icon(Icons.refresh),
           ),
         ],
       ),
       body: FutureBuilder(
-        future: getCurrentWeather(),
+        future: weather,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
@@ -136,36 +148,26 @@ class _WeatherScreenState extends State<WeatherScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                const SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      HourlyForecastItem(
-                        time: '0:00',
-                        icon: Icons.cloud,
-                        temperature: '320.12',
-                      ),
-                      HourlyForecastItem(
-                        time: '03:00',
-                        icon: Icons.sunny,
-                        temperature: '325.12',
-                      ),
-                      HourlyForecastItem(
-                        time: '06:00',
-                        icon: Icons.cloud,
-                        temperature: '330.12',
-                      ),
-                      HourlyForecastItem(
-                        time: '09:00',
-                        icon: Icons.sunny,
-                        temperature: '328.12',
-                      ),
-                      HourlyForecastItem(
-                        time: '12:00',
-                        icon: Icons.cloud,
-                        temperature: '324.12',
-                      ),
-                    ],
+                SizedBox(
+                  height: 120,
+                  child: ListView.builder(
+                    itemCount: 5,
+                    scrollDirection: Axis.horizontal,
+                    itemBuilder: (context, index) {
+                      final hourlyForecast = data['list'][index + 1];
+                      final hourlySky =
+                          data['list'][index + 1]['weather'][0]['main'];
+                      final hourlytemp =
+                          hourlyForecast['main']['temp'].toString();
+                      final time = DateTime.parse(hourlyForecast['dt_txt']);
+                      return HourlyForecastItem(
+                        time: DateFormat.Hm().format(time),
+                        temperature: hourlytemp,
+                        icon: hourlySky == 'Clouds' || hourlySky == 'Rain'
+                            ? Icons.cloud
+                            : Icons.sunny,
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(height: 20),
